@@ -3,11 +3,11 @@ from dotenv import load_dotenv
 load_dotenv()
 from datetime import datetime
 try:
-    from src.utils.utils import create_podcast, parse_dialogue, save_podcast_state, add_feedback_to_state, get_random_arxiv_file, get_last_timestamp, PROJECT_ROOT
+    from src.utils.utils import create_podcast, parse_dialogue, save_podcast_state, add_feedback_to_state, get_random_arxiv_file, get_last_timestamp, OUT_FOLDER
     from src.utils.agents_and_workflows import FeedbackAgent, PersonalityCreatorAgent
     from src.utils.textGDwithWeightClipping import optimize_prompt
 except ImportError:
-    from utils.utils import create_podcast, parse_dialogue, save_podcast_state, add_feedback_to_state, get_random_arxiv_file, get_last_timestamp, PROJECT_ROOT
+    from utils.utils import create_podcast, parse_dialogue, save_podcast_state, add_feedback_to_state, get_random_arxiv_file, get_last_timestamp, OUT_FOLDER
     from utils.agents_and_workflows import FeedbackAgent, PersonalityCreatorAgent
     from utils.textGDwithWeightClipping import optimize_prompt
 
@@ -65,7 +65,7 @@ def process_pdf_and_improve_prompts():
     add_feedback_to_state(new_timestamp, feedback)
 
     # Save parsed dialogue pieces
-    podcast_history_dir = os.path.join(PROJECT_ROOT, "podcast_history")
+    podcast_history_dir = os.path.join(OUT_FOLDER, "podcast_history")
     os.makedirs(podcast_history_dir, exist_ok=True)
     dialogue_file = os.path.join(podcast_history_dir, f"dialogue_pieces_{new_timestamp}.txt")
     with open(dialogue_file, 'w', encoding='utf-8') as f:

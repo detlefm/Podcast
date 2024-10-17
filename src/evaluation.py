@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Tuple, Optional
 try:
-    from src.utils.utils import create_podcast, extract_text_from_pdf, get_random_arxiv_file, get_all_timestamps, PROJECT_ROOT
+    from src.utils.utils import create_podcast, extract_text_from_pdf, get_random_arxiv_file, get_all_timestamps, OUT_FOLDER, PROJECT_ROOT
     from src.utils.agents_and_workflows import EvaluatorAgent
 except ImportError:
-    from utils.utils import create_podcast, extract_text_from_pdf, get_random_arxiv_file, get_all_timestamps, PROJECT_ROOT
+    from utils.utils import create_podcast, extract_text_from_pdf, get_random_arxiv_file, get_all_timestamps, OUT_FOLDER, PROJECT_ROOT
     from utils.agents_and_workflows import EvaluatorAgent
 
 # Add the project root to sys.path
@@ -58,7 +58,7 @@ def plot_scores(scores,  evaluator_model, prompt_model):
     plt.tight_layout()
     
     # Create a directory for plots and data if it doesn't exist
-    plots_dir = os.path.join(PROJECT_ROOT, "evaluation_plots")
+    plots_dir = os.path.join(OUT_FOLDER, "evaluation_plots")
     os.makedirs(plots_dir, exist_ok=True)
     
     # Save the plot with a unique filename
@@ -119,7 +119,7 @@ def main():
     #prompt_models = [("OpenRouter", "openai/gpt-4o-mini")]
 
     # Ensure prompt_history directory exists
-    prompt_history_dir = os.path.join(PROJECT_ROOT, "prompt_history")
+    prompt_history_dir = os.path.join(OUT_FOLDER, "prompt_history")
     os.makedirs(prompt_history_dir, exist_ok=True)
 
     for evaluator_provider, evaluator_model in evaluator_models:

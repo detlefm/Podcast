@@ -24,9 +24,15 @@ def get_project_root():
     return os.path.dirname(os.path.dirname(current_dir))
 
 PROJECT_ROOT = get_project_root()
+# Distinguish output folder from root folder. 
+# root folder with prompts is static source code. 
+# output folder is the runtime output and could be mapped 
+# to another location in a Docker container environment.
+# It is also not necessary to save runtime results on Github
+OUT_FOLDER = os.path.join(PROJECT_ROOT, "output")
 
 def get_all_timestamps():
-    prompt_history_dir = os.path.join(PROJECT_ROOT, "prompt_history")
+    prompt_history_dir = os.path.join(OUT_FOLDER, "prompt_history")
     if not os.path.exists(prompt_history_dir):
         print(f"Directory '{prompt_history_dir}' does not exist.")
         return []
@@ -60,10 +66,10 @@ def get_last_timestamp():
 
 def load_prompt(role, timestamp=None):
     prompt_file = f"{role}_prompt.txt"
-    prompts_dir = os.path.join(PROJECT_ROOT, "prompts")
+    prompts_dir = os.path.join(OUT_FOLDER, "prompts")
     
     if timestamp:
-        prompt_history_dir = os.path.join(PROJECT_ROOT, "prompt_history")
+        prompt_history_dir = os.path.join(OUT_FOLDER, "prompt_history")
         os.makedirs(prompt_history_dir, exist_ok=True)  # Ensure the directory exists
         history_file = f"{role}_prompt_{timestamp}.txt"
         history_path = os.path.join(prompt_history_dir, history_file)
@@ -83,7 +89,7 @@ def load_prompt(role, timestamp=None):
 
 def load_podcast_state(timestamp):
     state_file = f"podcast_state_{timestamp}.json"
-    podcast_states_dir = os.path.join(PROJECT_ROOT, "podcast_states")
+    podcast_states_dir = os.path.join(OUT_FOLDER, "podcast_states")
     state_file_path = os.path.join(podcast_states_dir, state_file)
     if os.path.exists(state_file_path):
         print(f"Loading podcast state from: {state_file_path}")
@@ -122,7 +128,8 @@ def extract_text_from_pdf(pdf_content: bytes) -> Tuple[Optional[str], int]:
     return text, token_count
 
 def pdf_to_markdown(pdf_path: str) -> None:
-    text = extract_text_from_pdf(pdf_path)
+    # extract_text returns a tuple
+    text, _ = extract_text_from_pdf(pdf_path)
     md = markdown.markdown(text)
     output_path = pdf_path.rsplit('.', 1)[0] + '.md'
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -130,7 +137,7 @@ def pdf_to_markdown(pdf_path: str) -> None:
     print(f"Markdown file created: {output_path}")
 
 def get_random_arxiv_file():
-    arxiv_folder = os.path.join(PROJECT_ROOT, "arxiv_papers")
+    arxiv_folder = os.path.join(OUT_FOLDER, "arxiv_papers")
     
     if not os.path.exists(arxiv_folder):
         print(f"The '{arxiv_folder}' folder does not exist.")
@@ -153,7 +160,7 @@ def save_podcast_state(state: PodcastState, timestamp: str):
         "enhanced_script": state["enhanced_script"].content
     }
     
-    podcast_states_dir = os.path.join(PROJECT_ROOT, "podcast_states")
+    podcast_states_dir = os.path.join(OUT_FOLDER, "podcast_states")
     
     os.makedirs(podcast_states_dir, exist_ok=True)
     filepath = os.path.join(podcast_states_dir, filename)
@@ -166,7 +173,7 @@ def save_podcast_state(state: PodcastState, timestamp: str):
 def add_feedback_to_state(timestamp: str, feedback: str):
     filename = f"podcast_state_{timestamp}.json"
     
-    podcast_states_dir = os.path.join(PROJECT_ROOT, "podcast_states")
+    podcast_states_dir = os.path.join(OUT_FOLDER, "podcast_states")
     
     filepath = os.path.join(podcast_states_dir, filename)
     
