@@ -59,8 +59,16 @@ class ExperimentIdeaRequest(BaseModel):
     idea: str
 
 
-VOTES_FILE = "votes.json"
-EXPERIMENT_IDEAS_FILE = "experiment_ideas.md"
+def get_wwwroot():
+    return os.path.dirname(os.path.abspath(__file__))
+
+OUT_FOLDER = os.path.join(get_wwwroot(), "output")
+
+VOTES_FILE = os.path.join(OUT_FOLDER,"feedback/votes.json")
+EXPERIMENT_IDEAS_FILE = os.path.join(OUT_FOLDER, "feedback/experiment_ideas.md")
+
+# VOTES_FILE = "votes.json"
+# EXPERIMENT_IDEAS_FILE = "experiment_ideas.md"
 
 def load_votes():
     if os.path.exists(VOTES_FILE):

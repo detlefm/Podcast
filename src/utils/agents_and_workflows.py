@@ -2,7 +2,7 @@ import os
 from os import path
 from langgraph.graph import END, StateGraph
 from langchain_core.messages import BaseMessage, HumanMessage
-from typing import TypedDict
+from typing import Any, TypedDict
 from dotenv import load_dotenv
 import os
 from langchain_openai import ChatOpenAI
@@ -16,141 +16,107 @@ class PodcastState(TypedDict):
     script_essence: BaseMessage
     enhanced_script: BaseMessage
 
+
+def _create_chat_model(model, temperature, provider="OpenRouter", api_key=None):
+    if provider == "OpenAI":
+        return ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
+            api_key=api_key or os.getenv("OPENAI_API_KEY")
+        )
+    else:  # OpenRouter
+        return ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key or os.getenv("OPENROUTER_API_KEY")
+        )
+
+
+
+def _load_prompt(file_path, timestamp=None):
+    # Get the absolute path to the project root directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(os.path.dirname(current_dir))
+    
+    if timestamp:
+        prompt_history_dir = os.path.join(root_dir, "prompt_history")
+        base_filename = os.path.basename(file_path)
+        history_file = f"{base_filename}_{timestamp}"
+        history_path = os.path.join(prompt_history_dir, history_file)
+        
+        if os.path.exists(history_path):
+            with open(history_path, 'r', encoding='utf-8') as file:
+                return file.read().strip()
+    
+    # If no timestamp provided or file not found, fall back to the original prompt file
+    absolute_path = os.path.join(root_dir, file_path)
+    if not os.path.exists(absolute_path):
+        raise FileNotFoundError(f"Prompt file not found: {absolute_path}")
+    
+    with open(absolute_path, 'r', encoding='utf-8') as file:
+        return file.read().strip()    
+
+
 class PodcastCreationWorkflow:
     def __init__(self, summarizer_model="openai/gpt-4o-mini", scriptwriter_model="openai/gpt-4o-mini", enhancer_model="openai/gpt-4o-mini", timestamp=None, provider="OpenRouter", api_key=None):
-        self.provider = provider
-        self.api_key = api_key
-        self.summarizer_model = self._create_chat_model(summarizer_model, 0)
-        self.scriptwriter_model = self._create_chat_model(scriptwriter_model, 0)
-        self.enhancer_model = self._create_chat_model(enhancer_model, 0.7)
+        self.summarizer_model = _create_chat_model(summarizer_model, 0, provider, api_key)
+        self.scriptwriter_model = _create_chat_model(scriptwriter_model, 0, provider, api_key)
+        self.enhancer_model = _create_chat_model(enhancer_model, 0.7, provider, api_key)
         self.timestamp = timestamp
 
-        self.summarizer_system_prompt = self.load_prompt("prompts/summarizer_prompt.txt", self.timestamp)
-        self.scriptwriter_system_prompt = self.load_prompt("prompts/scriptwriter_prompt.txt", self.timestamp)
-        self.enhancer_system_prompt = self.load_prompt("prompts/enhancer_prompt.txt", self.timestamp)
+        self.summarizer_system_prompt = _load_prompt("prompts/summarizer_prompt.txt", self.timestamp)
+        self.scriptwriter_system_prompt = _load_prompt("prompts/scriptwriter_prompt.txt", self.timestamp)
+        self.enhancer_system_prompt = _load_prompt("prompts/enhancer_prompt.txt", self.timestamp)
 
-    @staticmethod
-    def load_prompt(file_path, timestamp=None):
-        # Get the absolute path to the project root directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.dirname(os.path.dirname(current_dir))
-        
-        if timestamp:
-            prompt_history_dir = os.path.join(root_dir, "prompt_history")
-            base_filename = os.path.basename(file_path)
-            history_file = f"{base_filename}_{timestamp}"
-            history_path = os.path.join(prompt_history_dir, history_file)
-            
-            if os.path.exists(history_path):
-                with open(history_path, 'r', encoding='utf-8') as file:
-                    return file.read().strip()
-        
-        # If no timestamp provided or file not found, fall back to the original prompt file
-        absolute_path = os.path.join(root_dir, file_path)
-        if not os.path.exists(absolute_path):
-            raise FileNotFoundError(f"Prompt file not found: {absolute_path}")
-        
-        with open(absolute_path, 'r', encoding='utf-8') as file:
-            return file.read().strip()
+    
 
-    def _create_chat_model(self, model, temperature):
-        if self.provider == "OpenAI":
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                api_key=self.api_key or os.getenv("OPENAI_API_KEY")
-            )
-        else:  # OpenRouter
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                base_url="https://openrouter.ai/api/v1",
-                api_key=self.api_key or os.getenv("OPENROUTER_API_KEY")
-            )
+    def run_processor(self, state: PodcastState, input_key: str, output_key: str, system_prompt: str, model: Any) -> PodcastState:
+        content = state[input_key].content
 
-    @staticmethod
-    def load_prompt(file_path, timestamp=None):
-        # Get the absolute path to the project root directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.dirname(os.path.dirname(current_dir))
-        
-        if timestamp:
-            prompt_history_dir = os.path.join(root_dir, "prompt_history")
-            base_filename = os.path.basename(file_path)
-            history_file = f"{base_filename}_{timestamp}"
-            history_path = os.path.join(prompt_history_dir, history_file)
-            
-            if os.path.exists(history_path):
-                with open(history_path, 'r', encoding='utf-8') as file:
-                    return file.read().strip()
-        
-        # If no timestamp provided or file not found, fall back to the original prompt file
-        absolute_path = os.path.join(root_dir, file_path)
-        if not os.path.exists(absolute_path):
-            raise FileNotFoundError(f"Prompt file not found: {absolute_path}")
-        
-        with open(absolute_path, 'r', encoding='utf-8') as file:
-            return file.read().strip()
+        if not content:
+            raise ValueError(f"The {input_key} content is empty.")
+
+        print(f"Processing {input_key} to generate {output_key}...")
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{" + input_key + "}")
+        ])
+        chain = prompt | model
+        response = chain.invoke({input_key: content})
+        processed_content = response.content.strip()
+
+        state[output_key] = HumanMessage(content=processed_content)
+        return state    
 
     def run_summarizer(self, state: PodcastState) -> PodcastState:
-        text = state["main_text"].content
+        return self.run_processor(state, 
+                                  "main_text", 
+                                  "key_points", 
+                                  self.summarizer_system_prompt, 
+                                  self.summarizer_model)
 
-        if not text:
-            raise ValueError("The main_text content is empty.")
-
-        print("Summarizing the entire text to extract key points...")
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", self.summarizer_system_prompt),
-            ("human", "{text}")
-        ])
-        chain = prompt | self.summarizer_model
-        response = chain.invoke({"text": text})
-        key_points = response.content.strip()
-
-        state["key_points"] = HumanMessage(content=key_points)
-        return state
 
     def run_scriptwriter(self, state: PodcastState) -> PodcastState:
-        key_points = state["key_points"].content
+        return self.run_processor(state, 
+                                  "key_points", 
+                                  "script_essence", 
+                                  self.scriptwriter_system_prompt, 
+                                  self.scriptwriter_model)
 
-        if not key_points:
-            raise ValueError("No key points found to generate the script.")
-
-        print("Generating script essence from key points...")
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", self.scriptwriter_system_prompt),
-            ("human", "{key_points}")
-        ])
-        chain = prompt | self.scriptwriter_model
-        response = chain.invoke({"key_points": key_points})
-        script_essence = response.content.strip()
-
-        state["script_essence"] = HumanMessage(content=script_essence)
-        return state
 
     def run_enhancer(self, state: PodcastState) -> PodcastState:
-        script_essence = state["script_essence"].content
-
-        if not script_essence:
-            raise ValueError("No script essence found to enhance.")
-
-        print("Enhancing script with playful banter in dialogue form...")
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", self.enhancer_system_prompt),
-            ("human", "{script_essence}")
-        ])
-        chain = prompt | self.enhancer_model
-        response = chain.invoke({"script_essence": script_essence})
-        enhanced_script = response.content.strip()
-
-        state["enhanced_script"] = HumanMessage(content=enhanced_script)
-        return state
+        return  self.run_processor(state, 
+                                   "script_essence", 
+                                   "enhanced_script", 
+                                   self.enhancer_system_prompt, 
+                                   self.enhancer_model)
 
 
     def create_workflow(self) -> StateGraph:
@@ -166,94 +132,35 @@ class PodcastCreationWorkflow:
 
         return workflow
 
-class PersonalityCreatorAgent:
-    def __init__(self, model="openai/gpt-4o-mini", personality_prompt=None, provider="OpenRouter"):
-        self.provider = provider
-        self.personality_model = self._create_chat_model(model, 0.7)
-        self.personality_prompt_template = personality_prompt or self.load_prompt("prompts/personality_creator_prompt.txt")
 
-    def _create_chat_model(self, model, temperature):
-        if self.provider == "OpenAI":
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                api_key=os.getenv("OPENAI_API_KEY")
-            )
-        else:  # OpenRouter
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                base_url="https://openrouter.ai/api/v1",
-                api_key=os.getenv("OPENROUTER_API_KEY")
-            )
+class Agent:
+    def __init__(self, model, temperature, provider="OpenRouter", api_key=None):
+        self.model = _create_chat_model(model, temperature, provider, api_key)
 
-    @staticmethod
-    def load_prompt(file_path):
-        # Get the absolute path to the project root directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.dirname(os.path.dirname(current_dir))
-        absolute_path = os.path.join(root_dir, file_path)
-        if not os.path.exists(absolute_path):
-            raise FileNotFoundError(f"Prompt file not found: {absolute_path}")
-        with open(absolute_path, 'r', encoding='utf-8') as file:
-            return file.read().strip()
+class PersonalityCreatorAgent(Agent):
+    def __init__(self, model="openai/gpt-4o-mini", prompt=None, provider="OpenRouter"):
+        super().__init__(model, 0.7, provider)
+        self.prompt_template = prompt or _load_prompt("prompts/personality_creator_prompt.txt")
 
     def create_personality(self) -> str:
-        prompt = ChatPromptTemplate.from_template(self.personality_prompt_template)
-        chain = prompt | self.personality_model
+        prompt = ChatPromptTemplate.from_template(self.prompt_template)
+        chain = prompt | self.model
         print("Generating personality for feedback assessment...")
         response = chain.invoke({})
         personality = response.content.strip()
         return personality
 
-class FeedbackAgent:
-    def __init__(self, model="openai/gpt-4o", feedback_prompt=None, provider="OpenRouter"):
-        self.provider = provider
-        self.feedback_model = self._create_chat_model(model, 0)
-        self.feedback_prompt_template = feedback_prompt or self.load_prompt("prompts/feedback_prompt.txt")
-
-    def _create_chat_model(self, model, temperature):
-        if self.provider == "OpenAI":
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                api_key=os.environ.get("OPENAI_API_KEY")
-            )
-        else:  # OpenRouter
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                base_url="https://openrouter.ai/api/v1",
-                api_key=os.environ.get("OPENROUTER_API_KEY")
-            )
-
-    @staticmethod
-    def load_prompt(file_path):
-        # Get the absolute path to the project root directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.dirname(os.path.dirname(current_dir))
-        absolute_path = os.path.join(root_dir, file_path)
-        with open(absolute_path, 'r') as file:
-            return file.read().strip()
+class FeedbackAgent(Agent):
+    def __init__(self, model="openai/gpt-4o", prompt=None, provider="OpenRouter"):
+        super().__init__(model, 0, provider)
+        self.prompt_template = prompt or _load_prompt("prompts/prompt.txt")
 
     def run_feedback(self, original_text: str, final_product: str, personality: str) -> str:
         if not original_text or not final_product or not personality:
             raise ValueError("Original text, final product, and personality are all required for feedback.")
 
-        prompt = ChatPromptTemplate.from_template(self.feedback_prompt_template)
-        chain = prompt | self.feedback_model
+        prompt = ChatPromptTemplate.from_template(self.prompt_template)
+        chain = prompt | self.model
         print("Generating feedback on the original text and final product...")
         response = chain.invoke({
             "personality": personality,
@@ -263,41 +170,10 @@ class FeedbackAgent:
         feedback = response.content.strip()
         return feedback
 
-class WeightClippingAgent:
-    def __init__(self, model="o1-mini", provider="OpenAI"):
-        self.provider = provider
-        self.model = self._create_chat_model(model, 0)
-        self.prompt_template = self.load_prompt("prompts/weight_clipper_prompt.txt")
-    def _create_chat_model(self, model, temperature):
-        if self.provider == "OpenAI":
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                api_key=os.environ.get("OPENAI_API_KEY")
-            )
-        else:  # OpenRouter
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                base_url="https://openrouter.ai/api/v1",
-                api_key=os.environ.get("OPENROUTER_API_KEY")
-            )
-        
-
-    @staticmethod
-    def load_prompt(file_path):
-        # Get the absolute path to the project root directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.dirname(os.path.dirname(current_dir))
-        absolute_path = os.path.join(root_dir, file_path)
-        with open(absolute_path, 'r') as file:
-            return file.read().strip()
+class WeightClippingAgent(Agent):
+    def __init__(self, model="gpt-4o-mini", prompt=None, provider="OpenAI"):
+        super().__init__(model, 0, provider)
+        self.prompt_template = prompt or _load_prompt("prompts/weight_clipper_prompt.txt")
 
     def clean_prompt(self, system_prompt: str, role: str) -> str:
         prompt = ChatPromptTemplate.from_template(self.prompt_template)
@@ -305,41 +181,10 @@ class WeightClippingAgent:
         response = chain.invoke({"role": role, "system_prompt": system_prompt})
         return response.content.strip()
 
-class EvaluatorAgent:
-    def __init__(self, model="openai/gpt-4o", provider="OpenRouter"):
-        self.provider = provider
-        self.model = self._create_chat_model(model, 0)
-        self.prompt_template = self.load_prompt("prompts/evaluator_prompt.txt")
-
-    def _create_chat_model(self, model, temperature):
-        if self.provider == "OpenAI":
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                api_key=os.environ.get("OPENAI_API_KEY")
-            )
-        else:  # OpenRouter
-            return ChatOpenAI(
-                model=model,
-                temperature=temperature,
-                max_tokens=None,
-                timeout=None,
-                max_retries=2,
-                base_url="https://openrouter.ai/api/v1",
-                api_key=os.environ.get("OPENROUTER_API_KEY")
-            )
-
-    @staticmethod
-    def load_prompt(file_path):
-        # Get the absolute path to the project root directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.dirname(os.path.dirname(current_dir))
-        absolute_path = os.path.join(root_dir, file_path)
-        with open(absolute_path, 'r') as file:
-            return file.read().strip()
+class EvaluatorAgent(Agent):
+    def __init__(self, model="openai/gpt-4o", prompt=None, provider="OpenRouter"):
+        super().__init__(model, 0, provider)
+        self.prompt_template = prompt or _load_prompt("prompts/evaluator_prompt.txt")
 
     def evaluate_podcasts(self, original_text: str, podcast1: str, podcast2: str) -> str:
         prompt = ChatPromptTemplate.from_template(self.prompt_template)
@@ -350,4 +195,3 @@ class EvaluatorAgent:
             "podcast2": podcast2
         })
         return response.content.strip()
-

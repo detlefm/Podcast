@@ -6,9 +6,9 @@ from openai import OpenAI
 import logging
 from pydub import AudioSegment
 try:
-    from src.utils.utils import create_podcast, parse_dialogue, save_podcast_state, PROJECT_ROOT, get_last_timestamp
+    from src.utils.utils import create_podcast, parse_dialogue, save_podcast_state, OUT_FOLDER,  get_last_timestamp
 except ImportError:
-    from utils.utils import create_podcast, parse_dialogue, save_podcast_state, PROJECT_ROOT, get_last_timestamp
+    from utils.utils import create_podcast, parse_dialogue, save_podcast_state, OUT_FOLDER,   get_last_timestamp
 import threading
 
 # Set up logging
@@ -155,14 +155,14 @@ if __name__ == "__main__":
     audio_bytes, dialogue_text, new_timestamp = asyncio.run(create_podcast_audio(pdf_content, args.timestamp))
     
     # Save the audio file
-    os.makedirs(os.path.join(PROJECT_ROOT, "audios"), exist_ok=True)
-    audio_filename = os.path.join(PROJECT_ROOT, "audios", f"podcast_{new_timestamp}.mp3")
+    os.makedirs(os.path.join(OUT_FOLDER, "audios"), exist_ok=True)
+    audio_filename = os.path.join(OUT_FOLDER, "audios", f"podcast_{new_timestamp}.mp3")
     with open(audio_filename, "wb") as audio_file:
         audio_file.write(audio_bytes)
     print(f"Audio saved as: {audio_filename}")
     
     # Save the dialogue text
-    dialogue_filename = os.path.join(PROJECT_ROOT, "audios", f"dialogue_{new_timestamp}.txt")
+    dialogue_filename = os.path.join(OUT_FOLDER, "audios", f"dialogue_{new_timestamp}.txt")
     with open(dialogue_filename, "w", encoding="utf-8") as dialogue_file:
         dialogue_file.write(dialogue_text)
     print(f"Dialogue saved as: {dialogue_filename}")

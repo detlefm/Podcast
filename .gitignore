@@ -41,3 +41,7 @@ votes.json
 experiment_ideas.md
 !LICENSE.txt
 audios/
+
+# tmp and output folder
+tmp/
+output/

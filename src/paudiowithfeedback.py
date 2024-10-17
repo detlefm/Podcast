@@ -3,11 +3,11 @@ import os
 from datetime import datetime
 try:
     from src.paudio import create_podcast_audio
-    from src.utils.utils import get_last_timestamp, add_feedback_to_state, PROJECT_ROOT
+    from src.utils.utils import get_last_timestamp, add_feedback_to_state, OUT_FOLDER
     from src.utils.textGDwithWeightClipping import optimize_prompt
 except ImportError:
     from paudio import create_podcast_audio
-    from utils.utils import get_last_timestamp, add_feedback_to_state, PROJECT_ROOT
+    from utils.utils import get_last_timestamp, add_feedback_to_state, OUT_FOLDER
     from utils.textGDwithWeightClipping import optimize_prompt
 
 async def create_podcast_with_feedback(pdf_path, timestamp=None):
@@ -35,14 +35,14 @@ async def create_podcast_with_feedback(pdf_path, timestamp=None):
     print(f"New timestamp: {new_timestamp}")
     
     # Save the audio file
-    os.makedirs(os.path.join(PROJECT_ROOT, "audios"), exist_ok=True)
-    audio_filename = os.path.join(PROJECT_ROOT, "audios", f"podcast_{new_timestamp}.mp3")
+    os.makedirs(os.path.join(OUT_FOLDER, "audios"), exist_ok=True)
+    audio_filename = os.path.join(OUT_FOLDER, "audios", f"podcast_{new_timestamp}.mp3")
     with open(audio_filename, "wb") as audio_file:
         audio_file.write(audio_bytes)
     print(f"Audio saved as: {audio_filename}")
     
     # Save the dialogue text
-    dialogue_filename = os.path.join(PROJECT_ROOT, "audios", f"dialogue_{new_timestamp}.txt")
+    dialogue_filename = os.path.join(OUT_FOLDER, "audios", f"dialogue_{new_timestamp}.txt")
     with open(dialogue_filename, "w", encoding="utf-8") as dialogue_file:
         dialogue_file.write(dialogue_text)
     print(f"Dialogue saved as: {dialogue_filename}")
@@ -54,7 +54,7 @@ async def create_podcast_with_feedback(pdf_path, timestamp=None):
     # Ask for feedback
     want_feedback = input("\nDo you want to provide feedback? (yes/no): ").lower()
     
-    if want_feedback == "yes":
+    if want_feedback.startswith("y"):
         feedback = input("Please provide your feedback: ")
         add_feedback_to_state(new_timestamp, feedback)
         print("Feedback added to the podcast state.")
