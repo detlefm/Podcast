@@ -48,5 +48,8 @@ experiment_ideas.md
 !LICENSE.txt
 audios/
 
+# runtime or development data
 sampledata/
 tmp/
+_tmp/
+output/
