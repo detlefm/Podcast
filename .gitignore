@@ -31,6 +31,12 @@ coverage/
 .env.test.local
 .env.production.local
 
+# vscode settings
+.vscode/
+
+# virtual environments
+venv/
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -41,3 +47,6 @@ votes.json
 experiment_ideas.md
 !LICENSE.txt
 audios/
+
+sampledata/
+tmp/
